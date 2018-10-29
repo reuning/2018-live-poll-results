@@ -34,16 +34,6 @@ tmp <- by(df$voted, df$stdist, sum, na.rm=T)
 df <- df[df$stdist %in% names(tmp)[which(tmp > 5)], ]
 
 
-
-
-
-# library(lme4)
-# mod <- glmer(voted~(1|ager) + (1|educ) + (1|race_gender) + (1|response) +(1|stdist), data=df, weights = final_weight, 
-#              family=binomial(link="logit"), verbose = T)
-# summary(mod)
-# 
-# dotplot.ranef.mer(ranef(mod, condVar=T))
-
 library(rstanarm)
 
 table(df$age_combined)
@@ -72,3 +62,29 @@ mod <- stan_glmer(voted~(1|age_combined) + (1|educ) + (1|race_gender) +
 
 coef <- names(mod$coefficients)
 plot(mod, pars=coef[34:55])
+
+pred.df <- df[,c("age_combined", "educ", "race_gender", "partyid")]
+pred.df <- pred.df[complete.cases(pred.df),]
+pred.df <- unique(pred.df)
+pred.df$stdist <- "New"
+pred.df$educ <- "New"
+pred.df$age_combined <- "New"
+# pred.df$partyid <- "New"
+
+pred.df <-unique(pred.df)
+
+
+out <- replicate(100, apply(posterior_predict(mod, newdata=pred.df), 2, mean))
+
+out <- apply(out, 1, quantile, p=c(.05, .5, .95))
+plot.df <- as.data.frame(t(out))
+plot.df$type <-  paste(pred.df$race_gender, pred.df$partyid)
+colnames(plot.df)[1:3] <- c("Low", "Median", "High")
+library(ggplot2)
+
+setwd("/Users/kevinreuning/Dropbox/Projects/2018-live-poll-results/")
+
+pdf("Prob_Voted.pdf", height=8, width=6)
+ggplot(plot.df) + geom_pointrange(aes(ymin=Low, ymax=High, y=Median, x=type)) +
+  coord_flip() + ylab("Probability of Already Having Voted") +xlab("")
+dev.off()
