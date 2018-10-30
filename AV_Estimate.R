@@ -49,6 +49,7 @@ table(df$partyid)
 df$partyid[df$partyid=="[DO NOT READ] Don't know/Refused"] <- NA
 df$partyid[df$partyid=="[DO NOT READ] Refused"] <- NA
 df$partyid[df$partyid=="or as a member of another political party"] <- NA
+df$partyid[df$partyid=="Independent (No party)"] <- "Independent"
 df$response[df$response %in% c("3", "4", "5", "6")] <- NA
 
 df$race_gender <- paste(df$race_eth, df$gender_combined, sep="_")
@@ -57,13 +58,14 @@ df$race_gender[grepl("NA", df$race_gender)] <- NA
 table(df$partyid, df$voted)
 table(df$response, df$voted)
 
-mod <- stan_glmer(voted~(1 + partyid|age_combined/educ/race_gender)  +
-                    (1|partyid/stdist), data=df, weights = final_weight, 
+mod <- stan_glmer(voted~(1 + partyid|age_combined) + (1 + partyid|educ) + 
+                    (1+partyid|race_gender)  +
+                    (1|partyid) + (1|stdist), data=df, weights = final_weight, 
                   family=binomial(link="logit"), cores=2, chains=2, adapt_delta = .95)
 
 
 coef <- names(mod$coefficients)
-plot(mod, pars=coef[34:55])
+plot(mod, pars=coef[34:89])
 
 pred.df <- df[,c("age_combined", "educ", "race_gender", "partyid")]
 pred.df <- pred.df[complete.cases(pred.df),]
@@ -82,7 +84,7 @@ out <- apply(out, 1, quantile, p=c(.05, .5, .95))
 plot.df <- as.data.frame(t(out))
 # plot.df$type <-  paste(pred.df$race_gender, pred.df$partyid)
 plot.df$race_gender <- pred.df$race_gender 
-plot.df$choice <- pred.df$response
+plot.df$partyid <- pred.df$partyid
 colnames(plot.df)[1:3] <- c("Low", "Median", "High")
 library(ggplot2)
 
@@ -98,11 +100,11 @@ plot.df$race_gender <- gsub("_", " ", plot.df$race_gender)
 png("Prob_Voted_Race.png", height=8, width=6,
     units="in", res=200)
 ggplot(plot.df) + geom_pointrange(aes(ymin=Low, ymax=High, y=Median, 
-                                      x=race_gender,  color=choice ), 
+                                      x=race_gender,  color=partyid ), 
                                   position=position_dodge(width=.5)) +
   coord_flip() + ylab("Probability of Already Having Voted") +xlab("") + 
-  scale_colour_manual(values = c( "#124073", "#B71D1A", "#A8BF14"), 
-                      name="Type") + theme_classic(base_size=14) +
+  scale_colour_manual(values = c( "#124073", "#A8BF14", "#B71D1A"), 
+                      name="Partisanship") + theme_classic(base_size=14) +
   theme(plot.title=element_text(family="futura", hjust=.5), 
         text=element_text(family="mstreg"), 
         panel.grid=element_line(size=0), 
@@ -118,7 +120,7 @@ dev.off()
 
 
 
-pred.df <- df[,c("age_combined", "educ", "race_gender", "response")]
+pred.df <- df[,c("age_combined", "educ", "race_gender",  "partyid")]
 pred.df <- pred.df[complete.cases(pred.df),]
 pred.df <- unique(pred.df)
 pred.df$stdist <- "New"
@@ -136,7 +138,7 @@ out <- apply(out, 1, quantile, p=c(.05, .5, .95))
 plot.df <- as.data.frame(t(out))
 # plot.df$type <-  paste(pred.df$race_gender, pred.df$partyid)
 plot.df$age <- pred.df$age_combined 
-plot.df$choice <- pred.df$response
+plot.df$partyid <- pred.df$partyid
 colnames(plot.df)[1:3] <- c("Low", "Median", "High")
 library(ggplot2)
 
@@ -147,11 +149,11 @@ setwd("/Users/kevinreuning/Dropbox/Projects/2018-live-poll-results/")
 png("Prob_Voted_Age.png", height=8, width=6, 
     units="in", res=200)
 ggplot(plot.df) + geom_pointrange(aes(ymin=Low, ymax=High, y=Median, 
-                                      x=age,  color=choice ), 
+                                      x=age,  color=partyid ), 
                                   position=position_dodge(width=.5)) +
   coord_flip() + ylab("Probability of Already Having Voted") +xlab("") + 
-  scale_colour_manual(values = c( "#124073", "#B71D1A", "#A8BF14"), 
-                      name="Type") + theme_classic(base_size=14) +
+  scale_colour_manual("Partisanship", values = c( "#124073", "#A8BF14", "#B71D1A"), 
+                      name="Partisanship") + theme_classic(base_size=14) +
   theme(plot.title=element_text(family="futura", hjust=.5), 
         text=element_text(family="mstreg"), 
         panel.grid=element_line(size=0), 
@@ -161,3 +163,108 @@ ggplot(plot.df) + geom_pointrange(aes(ymin=Low, ymax=High, y=Median,
         axis.text.x = element_text(family="mstthin", color="black"))
 dev.off()
 
+
+
+
+mod2 <- stan_glmer(voted~(1 + response|age_combined) + (1 + response|educ) + 
+                    (1+response|race_gender)  +
+                    (1|response) + (1|stdist), data=df, weights = final_weight, 
+                  family=binomial(link="logit"), cores=2, chains=2, adapt_delta = .95)
+
+
+coef <- names(mod2$coefficients)
+plot(mod2, pars=coef[34:89])
+
+pred.df <- df[,c("age_combined", "educ", "race_gender", "response")]
+pred.df <- pred.df[complete.cases(pred.df),]
+pred.df <- unique(pred.df)
+pred.df$stdist <- "New"
+pred.df$educ <- "New"
+pred.df$age_combined <- "New"
+# pred.df$response <- "New"
+
+pred.df <-unique(pred.df)
+
+
+out <- replicate(100, apply(posterior_predict(mod2, newdata=pred.df), 2, mean))
+
+out <- apply(out, 1, quantile, p=c(.05, .5, .95))
+plot.df <- as.data.frame(t(out))
+# plot.df$type <-  paste(pred.df$race_gender, pred.df$partyid)
+plot.df$race_gender <- pred.df$race_gender 
+plot.df$response <- pred.df$response
+colnames(plot.df)[1:3] <- c("Low", "Median", "High")
+library(ggplot2)
+
+plot.df$race_gender <- gsub("_", " ", plot.df$race_gender)
+
+
+png("Prob_Voted_Race_Response.png", height=8, width=6,
+    units="in", res=200)
+ggplot(plot.df) + geom_pointrange(aes(ymin=Low, ymax=High, y=Median, 
+                                      x=race_gender,  color=response ), 
+                                  position=position_dodge(width=.5)) +
+  coord_flip() + ylab("Probability of Already Having Voted") +xlab("") + 
+  scale_colour_manual(values = c( "#124073", "#A8BF14", "#B71D1A"), 
+                      name="Vote Choice") + theme_classic(base_size=14) +
+  theme(plot.title=element_text(family="futura", hjust=.5), 
+        text=element_text(family="mstreg"), 
+        panel.grid=element_line(size=0), 
+        panel.grid.major.y=element_line(size=.5, color=alpha("gray", .5), 
+                                        linetype = 2), 
+        panel.border=element_rect(size=0, fill=NA), 
+        axis.text.x = element_text(family="mstthin", color="black"))
+dev.off()
+
+
+
+
+
+
+
+pred.df <- df[,c("age_combined", "educ", "race_gender",  "response")]
+pred.df <- pred.df[complete.cases(pred.df),]
+pred.df <- unique(pred.df)
+pred.df$stdist <- "New"
+pred.df$educ <- "New"
+# pred.df$age_combined <- "New"
+pred.df$race_gender <- "New"
+# pred.df$response <- "New"
+
+pred.df <-unique(pred.df)
+
+
+out <- replicate(100, apply(posterior_predict(mod2, newdata=pred.df), 2, mean))
+
+out <- apply(out, 1, quantile, p=c(.05, .5, .95))
+plot.df <- as.data.frame(t(out))
+# plot.df$type <-  paste(pred.df$race_gender, pred.df$partyid)
+plot.df$age <- pred.df$age_combined 
+plot.df$response <- pred.df$response
+colnames(plot.df)[1:3] <- c("Low", "Median", "High")
+
+
+
+
+png("Prob_Voted_Age_Response.png", height=8, width=6, 
+    units="in", res=200)
+ggplot(plot.df) + geom_pointrange(aes(ymin=Low, ymax=High, y=Median, 
+                                      x=age,  color=response ), 
+                                  position=position_dodge(width=.5)) +
+  coord_flip() + ylab("Probability of Already Having Voted") +xlab("") + 
+  scale_colour_manual("Partisanship", values = c( "#124073", "#A8BF14", "#B71D1A"), 
+                      name="Vote Choice") + theme_classic(base_size=14) +
+  theme(plot.title=element_text(family="futura", hjust=.5), 
+        text=element_text(family="mstreg"), 
+        panel.grid=element_line(size=0), 
+        panel.grid.major.y=element_line(size=.5, color=alpha("gray", .5), 
+                                        linetype = 2), 
+        panel.border=element_rect(size=0, fill=NA), 
+        axis.text.x = element_text(family="mstthin", color="black"))
+dev.off()
+
+
+
+
+
+save.image("Out.RData")
