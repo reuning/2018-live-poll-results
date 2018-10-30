@@ -61,7 +61,7 @@ table(df$response, df$voted)
 mod <- stan_glmer(voted~(1 + partyid|age_combined) + (1 + partyid|educ) + 
                     (1+partyid|race_gender)  +
                     (1|partyid) + (1|stdist), data=df, weights = final_weight, 
-                  family=binomial(link="logit"), cores=2, chains=2, adapt_delta = .95)
+                  family=binomial(link="logit"), cores=2, chains=2, adapt_delta = .99)
 
 
 coef <- names(mod$coefficients)
@@ -169,7 +169,7 @@ dev.off()
 mod2 <- stan_glmer(voted~(1 + response|age_combined) + (1 + response|educ) + 
                     (1+response|race_gender)  +
                     (1|response) + (1|stdist), data=df, weights = final_weight, 
-                  family=binomial(link="logit"), cores=2, chains=2, adapt_delta = .95)
+                  family=binomial(link="logit"), cores=2, chains=2, adapt_delta = .99)
 
 
 coef <- names(mod2$coefficients)
