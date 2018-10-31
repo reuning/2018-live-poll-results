@@ -353,10 +353,10 @@ barplot(tmp, beside = T, col=scales::alpha(c( "#124073","#A8BF14", "#B71D1A"), .
         yaxt="n", xlim=c(1,15), ylim=c(0,100), border=NA)
 axis(2, family="mstthin")
 legend("right", legend=c("Democrat", "Undecided", "Republican"), 
-       fill=c( "#124073","#A8BF14", "#B71D1A"), 
-       title="Vote Choice")
+       fill=scales::alpha(c( "#124073","#A8BF14", "#B71D1A"), .6), 
+       title="Vote Choice", bty="n", border=NA)
 title(main=toupper("Independent Early Voters are\nBreaking towards Democrats"), family="futura")
-title(ylab="Percentage", xlab="Party Identification")
+title(ylab="Percentage", xlab="")
 for(ii in 1:length(up)){
   lines(x=c(ii, ii)+(.5 + ((ii -1) %/% 3)), y=c(lo[ii], up[ii]), 
         lwd=2, col=c("#B71D1A", "#124073","#A8BF14")[((ii %% 3) + 1)])
